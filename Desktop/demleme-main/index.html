@@ -34,6 +34,10 @@
       background-color: #FCA5A5 !important;
     }
 
+    body.hatirlatma-flash {
+      background-color: #F87171 !important;
+    }
+
     .app-container {
       width: 100%;
       max-width: 480px;
@@ -214,6 +218,12 @@
       color: #FFFFFF;
     }
 
+    .btn-alert {
+      background-color: #DC2626;
+      color: #FFFFFF;
+      border: 2px solid #991B1B;
+    }
+
     .btn-sm {
       width: auto;
       padding: 8px 12px;
@@ -377,17 +387,42 @@
       }
     }
 
+    @keyframes hatirlatmaFlas {
+      0% {
+        background-color: #FEE2E2;
+        border-color: #B91C1C;
+        box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.8);
+      }
+      50% {
+        background-color: #EF4444;
+        border-color: #7F1D1D;
+        box-shadow: 0 0 20px 6px rgba(185, 28, 28, 1);
+        color: #FFFFFF;
+      }
+      100% {
+        background-color: #FEE2E2;
+        border-color: #B91C1C;
+        box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.8);
+      }
+    }
+
     .ocak-order-card {
       background-color: #FFFFFF;
       border: 2px solid #9CA3AF;
       border-radius: 10px;
       padding: 14px;
       margin-bottom: 12px;
+      position: relative;
     }
 
     .ocak-order-card.yeni {
       animation: siparisFlas 0.9s infinite ease-in-out;
       border-width: 3px;
+    }
+
+    .ocak-order-card.hatirlatildi {
+      animation: hatirlatmaFlas 0.5s infinite ease-in-out !important;
+      border-width: 4px !important;
     }
 
     .ocak-order-card.yolda {
@@ -425,6 +460,18 @@
       color: #B91C1C;
       margin-bottom: 12px;
       line-height: 1.4;
+    }
+
+    .hatirlatma-badge {
+      display: inline-block;
+      background-color: #DC2626;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
     }
 
     .ocak-actions {
@@ -591,6 +638,7 @@
     let kayitYapiliyorMu = false;
     let kayitZamanlayici = null;
     let audioCtx = null;
+    let esnafZamanlayici = null;
 
     if ('serviceWorker' in navigator) {
       window.addEventListener('load', () => {
@@ -659,6 +707,23 @@
             gain.connect(audioCtx.destination);
             osc.start(audioCtx.currentTime + gecikme);
             osc.stop(audioCtx.currentTime + gecikme + 0.18);
+          });
+        } else if (tip === "hatirlatma") {
+          // Ayrı ve daha tiz hatırlatma zili (4 hızlı vuruş)
+          document.body.classList.add("hatirlatma-flash");
+          setTimeout(() => document.body.classList.remove("hatirlatma-flash"), 1200);
+
+          [0, 0.12, 0.24, 0.36].forEach((gecikme) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(987.77, audioCtx.currentTime + gecikme);
+            gain.gain.setValueAtTime(0.35, audioCtx.currentTime + gecikme);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + gecikme + 0.09);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + gecikme);
+            osc.stop(audioCtx.currentTime + gecikme + 0.09);
           });
         } else if (tip === "yolda") {
           [523.25, 659.25].forEach((frekans, idx) => {
@@ -793,6 +858,9 @@
 
       icecekListesiniCiz();
       esnafSonSiparisiGetir();
+
+      if (esnafZamanlayici) clearInterval(esnafZamanlayici);
+      esnafZamanlayici = setInterval(esnafSonSiparisiGetir, 15000);
 
       sb.channel("esnaf-kanal-" + aktifEsnaf.id)
         .on(
@@ -946,7 +1014,7 @@
         .from("siparisler")
         .select("*")
         .eq("dukkan_id", aktifEsnaf.id)
-        .in("durum", ["bekliyor", "yolda"])
+        .in("durum", ["bekliyor", "yolda", "hatirlatildi"])
         .order("created_at", { ascending: false })
         .limit(1);
 
@@ -959,18 +1027,49 @@
       const sip = data[0];
       const kalemMetni = (sip.icerik || []).map((k) => `${k.adet} ${k.ad}`).join(", ") || "Sesli Sipariş";
       const yoldaMi = sip.durum === "yolda";
+      const gecenSaniye = Math.floor((new Date() - new Date(sip.created_at)) / 1000);
+      const hatirlatabilirMi = !yoldaMi && gecenSaniye >= 120; // 2 dakika sonra hatirlatma butonu aktif olur
 
       box.style.display = "block";
       box.innerHTML = `
         <div class="card order-status-card ${sip.durum}">
           <div class="card-title">
-            ${yoldaMi ? "🏃‍♂️ SİPARİŞİNİZ YOLDA! (Çaycı Çıktı Geliyor)" : "⏳ SİPARİŞİNİZ OCAKTA HAZIRLANIYOR..."}
+            ${
+              yoldaMi
+                ? "🏃‍♂️ SİPARİŞİNİZ YOLDA! (Çaycı Çıktı Geliyor)"
+                : sip.durum === "hatirlatildi"
+                ? "🚨 OCAĞA HATIRLATMA İLETİLDİ (Sıradasınız)"
+                : "⏳ SİPARİŞİNİZ OCAKTA HAZIRLANIYOR..."
+            }
           </div>
-          <div class="card-desc" style="margin-bottom:0; font-weight:700; color:#111827;">
+          <div class="card-desc" style="margin-bottom:8px; font-weight:700; color:#111827;">
             İçerik: ${kalemMetni}
           </div>
+          ${
+            !yoldaMi
+              ? hatirlatabilirMi
+                ? `<button class="btn btn-alert btn-sm" style="width:100%; margin-top:6px;" onclick="siparisiHatirlat(${sip.id})">
+                     ⏰ ÇAYLAR NEREDE KALDI? (OCAKÇIYI DÜRT)
+                   </button>`
+                : `<div style="font-size:12px; color:#6B7280; font-weight:600; margin-top:6px;">
+                     ⏳ Çaylar gecikirse 2 dk sonra hatırlatma butonu açılır (${Math.max(0, 120 - gecenSaniye)} sn kaldı).
+                   </div>`
+              : ""
+          }
         </div>
       `;
+    }
+
+    async function siparisiHatirlat(siparisId) {
+      const { error } = await sb
+        .from("siparisler")
+        .update({ durum: "hatirlatildi" })
+        .eq("id", siparisId);
+
+      if (!error) {
+        alert("Ocakçıya acil hatırlatma zili gönderildi!");
+        esnafSonSiparisiGetir();
+      }
     }
 
     function ocakEkraniniBaslat() {
@@ -995,6 +1094,8 @@
         .on("postgres_changes", { event: "*", schema: "public", table: "siparisler" }, (payload) => {
           if (payload.eventType === "INSERT") {
             diafonZiliCal("yeni_siparis");
+          } else if (payload.eventType === "UPDATE" && payload.new && payload.new.durum === "hatirlatildi") {
+            diafonZiliCal("hatirlatma");
           }
           ocakSiparisleriGetir();
         })
@@ -1023,7 +1124,7 @@
       const { data } = await sb
         .from("siparisler")
         .select("*")
-        .in("durum", ["bekliyor", "yolda"])
+        .in("durum", ["bekliyor", "yolda", "hatirlatildi"])
         .order("created_at", { ascending: true });
 
       const liste = document.getElementById("ocakOrdersList");
@@ -1046,10 +1147,12 @@
         const saat = new Date(sip.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
         const kalemler = (sip.icerik || []).map((k) => `${k.adet}x ${k.ad}`).join(" • ") || "Sadece Sesli Not";
         const yeniMi = sip.durum === "bekliyor";
+        const hatirlatildiMi = sip.durum === "hatirlatildi";
 
         const div = document.createElement("div");
-        div.className = `ocak-order-card ${yeniMi ? "yeni" : "yolda"}`;
+        div.className = `ocak-order-card ${hatirlatildiMi ? "hatirlatildi" : yeniMi ? "yeni" : "yolda"}`;
         div.innerHTML = `
+          ${hatirlatildiMi ? `<div class="hatirlatma-badge">🚨 ACİL / ESNAF ÇAYI HATIRLATTI!</div>` : ""}
           <div class="ocak-order-header">
             <div class="ocak-shop-name">${sip.dukkan_ad}</div>
             <div class="ocak-time">${saat}</div>
@@ -1064,7 +1167,7 @@
           }
           <div class="ocak-actions">
             ${
-              yeniMi
+              yeniMi || hatirlatildiMi
                 ? `<button class="btn btn-success" onclick="siparisDurumGuncelle(${sip.id}, 'yolda')">🏃‍♂️ YOLA ÇIKAR</button>`
                 : `<button class="btn btn-warning" onclick="siparisDurumGuncelle(${sip.id}, 'teslim')">✅ TESLİM EDİLDİ (KAPAT)</button>`
             }
