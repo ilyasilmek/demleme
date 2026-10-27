@@ -1,0 +1,1313 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="theme-color" content="#B91C1C" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Demleme" />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
+  <title>Demleme - Çay Ocağı Diafonu</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    body {
+      background-color: #F4F5F7;
+      color: #111827;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      transition: background-color 0.2s ease;
+    }
+
+    body.alarm-flash {
+      background-color: #FCA5A5 !important;
+    }
+
+    body.hatirlatma-flash {
+      background-color: #F87171 !important;
+    }
+
+    .app-container {
+      width: 100%;
+      max-width: 480px;
+      min-height: 100vh;
+      background-color: #F4F5F7;
+      display: flex;
+      flex-direction: column;
+      padding-bottom: 32px;
+    }
+
+    .topbar {
+      background-color: #FFFFFF;
+      border-bottom: 2px solid #E5E7EB;
+      padding: 14px 16px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      position: sticky;
+      top: 0;
+      z-index: 20;
+    }
+
+    .topbar-title {
+      font-size: 17px;
+      font-weight: 800;
+      color: #111827;
+      letter-spacing: -0.3px;
+    }
+
+    .topbar-sub {
+      font-size: 12px;
+      color: #4B5563;
+      font-weight: 600;
+      margin-top: 2px;
+    }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 800;
+      padding: 6px 10px;
+      border-radius: 6px;
+      background-color: #DCFCE7;
+      color: #15803D;
+      border: 1px solid #86EFAC;
+      cursor: pointer;
+    }
+
+    .status-badge.locked {
+      background-color: #FEF3C7;
+      color: #B45309;
+      border-color: #F59E0B;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background-color: currentColor;
+    }
+
+    .section {
+      padding: 16px;
+      display: none;
+    }
+
+    .section.active {
+      display: block;
+    }
+
+    .card {
+      background-color: #FFFFFF;
+      border: 1px solid #D1D5DB;
+      border-radius: 10px;
+      padding: 16px;
+      margin-bottom: 14px;
+    }
+
+    .card-title {
+      font-size: 16px;
+      font-weight: 800;
+      margin-bottom: 6px;
+      color: #111827;
+    }
+
+    .card-desc {
+      font-size: 13px;
+      color: #4B5563;
+      margin-bottom: 14px;
+      line-height: 1.4;
+    }
+
+    .form-group {
+      margin-bottom: 14px;
+    }
+
+    .form-label {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      color: #1F2937;
+      margin-bottom: 6px;
+    }
+
+    .form-input {
+      width: 100%;
+      padding: 12px 14px;
+      font-size: 16px;
+      font-weight: 700;
+      color: #111827;
+      background-color: #FFFFFF;
+      border: 2px solid #9CA3AF;
+      border-radius: 8px;
+      outline: none;
+    }
+
+    .form-input:focus {
+      border-color: #111827;
+    }
+
+    .form-input.input-error {
+      border-color: #DC2626 !important;
+      background-color: #FEF2F2;
+    }
+
+    .error-text {
+      display: none;
+      color: #DC2626;
+      font-size: 12px;
+      font-weight: 700;
+      margin-top: 6px;
+    }
+
+    .error-text.visible {
+      display: block;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 14px 16px;
+      font-size: 15px;
+      font-weight: 800;
+      text-align: center;
+      border-radius: 8px;
+      border: none;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      user-select: none;
+    }
+
+    .btn:active {
+      transform: translateY(1px);
+    }
+
+    .btn-primary {
+      background-color: #B91C1C;
+      color: #FFFFFF;
+    }
+
+    .btn-secondary {
+      background-color: #E5E7EB;
+      color: #1F2937;
+      border: 1px solid #D1D5DB;
+    }
+
+    .btn-success {
+      background-color: #15803D;
+      color: #FFFFFF;
+    }
+
+    .btn-warning {
+      background-color: #D97706;
+      color: #FFFFFF;
+    }
+
+    .btn-alert {
+      background-color: #DC2626;
+      color: #FFFFFF;
+      border: 2px solid #991B1B;
+    }
+
+    .btn-sm {
+      width: auto;
+      padding: 8px 12px;
+      font-size: 13px;
+    }
+
+    .drink-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 0;
+      border-bottom: 1px solid #E5E7EB;
+    }
+
+    .drink-row:last-child {
+      border-bottom: none;
+    }
+
+    .drink-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .drink-icon {
+      font-size: 22px;
+      width: 34px;
+      text-align: center;
+    }
+
+    .drink-name {
+      font-size: 15px;
+      font-weight: 700;
+      color: #111827;
+    }
+
+    .qty-controls {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .qty-btn {
+      width: 38px;
+      height: 38px;
+      border-radius: 8px;
+      border: 2px solid #9CA3AF;
+      background-color: #F9FAFB;
+      color: #111827;
+      font-size: 20px;
+      font-weight: 800;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .qty-btn.plus {
+      border-color: #B91C1C;
+      color: #B91C1C;
+      background-color: #FEF2F2;
+    }
+
+    .qty-val {
+      width: 28px;
+      text-align: center;
+      font-size: 17px;
+      font-weight: 800;
+      color: #111827;
+    }
+
+    .ptt-box {
+      margin-top: 12px;
+      margin-bottom: 14px;
+    }
+
+    .btn-ptt {
+      background-color: #1F2937;
+      color: #FFFFFF;
+      border: 2px solid #111827;
+      padding: 14px;
+      font-size: 14px;
+    }
+
+    .btn-ptt.recording {
+      background-color: #DC2626;
+      border-color: #991B1B;
+    }
+
+    .audio-preview {
+      display: none;
+      margin-top: 8px;
+      padding: 10px;
+      background-color: #F3F4F6;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .audio-preview.visible {
+      display: flex;
+    }
+
+    .order-status-card {
+      border-width: 2px;
+    }
+
+    .order-status-card.bekliyor {
+      border-color: #D97706;
+      background-color: #FFFBEB;
+    }
+
+    .order-status-card.yolda {
+      border-color: #15803D;
+      background-color: #F0FDF4;
+    }
+
+    .tabs {
+      display: flex;
+      gap: 6px;
+      margin-bottom: 14px;
+    }
+
+    .tab-btn {
+      flex: 1;
+      padding: 10px 4px;
+      font-size: 12px;
+      font-weight: 800;
+      background-color: #E5E7EB;
+      color: #374151;
+      border: 1px solid #D1D5DB;
+      border-radius: 8px;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .tab-btn.active {
+      background-color: #111827;
+      color: #FFFFFF;
+      border-color: #111827;
+    }
+
+    @keyframes siparisFlas {
+      0% {
+        background-color: #FEF2F2;
+        border-color: #DC2626;
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+      }
+      50% {
+        background-color: #FCA5A5;
+        border-color: #991B1B;
+        box-shadow: 0 0 15px 4px rgba(220, 38, 38, 0.9);
+      }
+      100% {
+        background-color: #FEF2F2;
+        border-color: #DC2626;
+        box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+      }
+    }
+
+    @keyframes hatirlatmaFlas {
+      0% {
+        background-color: #FEE2E2;
+        border-color: #B91C1C;
+        box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.8);
+      }
+      50% {
+        background-color: #EF4444;
+        border-color: #7F1D1D;
+        box-shadow: 0 0 20px 6px rgba(185, 28, 28, 1);
+        color: #FFFFFF;
+      }
+      100% {
+        background-color: #FEE2E2;
+        border-color: #B91C1C;
+        box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.8);
+      }
+    }
+
+    .ocak-order-card {
+      background-color: #FFFFFF;
+      border: 2px solid #9CA3AF;
+      border-radius: 10px;
+      padding: 14px;
+      margin-bottom: 12px;
+      position: relative;
+    }
+
+    .ocak-order-card.yeni {
+      animation: siparisFlas 0.9s infinite ease-in-out;
+      border-width: 3px;
+    }
+
+    .ocak-order-card.hatirlatildi {
+      animation: hatirlatmaFlas 0.5s infinite ease-in-out !important;
+      border-width: 4px !important;
+    }
+
+    .ocak-order-card.yolda {
+      animation: none;
+      background-color: #F0FDF4;
+      border: 2px solid #15803D;
+      box-shadow: none;
+    }
+
+    .ocak-order-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 8px;
+    }
+
+    .ocak-shop-name {
+      font-size: 17px;
+      font-weight: 900;
+      color: #111827;
+    }
+
+    .ocak-time {
+      font-size: 12px;
+      font-weight: 700;
+      color: #4B5563;
+      background-color: #E5E7EB;
+      padding: 3px 8px;
+      border-radius: 4px;
+    }
+
+    .ocak-items {
+      font-size: 16px;
+      font-weight: 800;
+      color: #B91C1C;
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .hatirlatma-badge {
+      display: inline-block;
+      background-color: #DC2626;
+      color: #FFFFFF;
+      font-size: 11px;
+      font-weight: 900;
+      padding: 4px 8px;
+      border-radius: 4px;
+      margin-bottom: 8px;
+      letter-spacing: 0.5px;
+    }
+
+    .ocak-actions {
+      display: flex;
+      gap: 8px;
+    }
+
+    .qr-box {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      background: #FFFFFF;
+      border: 2px dashed #9CA3AF;
+      border-radius: 8px;
+      margin-top: 10px;
+    }
+
+    .logout-link {
+      font-size: 12px;
+      font-weight: 700;
+      color: #6B7280;
+      background: none;
+      border: none;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="app-container">
+    <header class="topbar">
+      <div>
+        <div class="topbar-title" id="headerTitle">DEMLEME DİAFON</div>
+        <div class="topbar-sub" id="headerSub">Kurulum Bekleniyor</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <div class="status-badge" id="connBadge" onclick="sesKilidiniAc()">
+          <span class="status-dot"></span>
+          <span id="connText">Canlı</span>
+        </div>
+        <button class="logout-link" id="btnResetRole" style="display:none;" onclick="cihazKilidiniAc()">Çıkış</button>
+      </div>
+    </header>
+
+    <section class="section active" id="screenLogin">
+      <div class="card">
+        <div class="card-title">Esnaf Dükkan Eşleştirme</div>
+        <div class="card-desc">Çay ocağından aldığınız 4 haneli dükkan kodunu girin. Telefonunuz bu dükkana kilitlenir, tekrar kod sormaz.</div>
+        <div class="form-group">
+          <label class="form-label" for="inputShopCode">4 Haneli Dükkan Kodu</label>
+          <input type="tel" maxlength="4" id="inputShopCode" class="form-input" placeholder="Örn: 1453" />
+          <div class="error-text" id="errShopCode"></div>
+        </div>
+        <button class="btn btn-primary" onclick="esnafGirisYap()">DÜKKANI EŞLEŞTİR VE BAŞLA</button>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Merkez Çay Ocağı Girişi</div>
+        <div class="card-desc">Bu bölüm çay ocağı tezgahındaki ana cihaz içindir. Yönetici şifresini girin.</div>
+        <div class="form-group">
+          <label class="form-label" for="inputAdminPin">Ocak Yönetici Şifresi</label>
+          <input type="password" inputmode="numeric" id="inputAdminPin" class="form-input" placeholder="Şifreyi girin" />
+          <div class="error-text" id="errAdminPin"></div>
+        </div>
+        <button class="btn btn-secondary" onclick="ocakGirisYap()">OCAK PANELİNİ AÇ</button>
+      </div>
+    </section>
+
+    <section class="section" id="screenEsnaf">
+      <div id="esnafActiveOrderBox" style="display:none;"></div>
+
+      <div class="card">
+        <div class="card-title">İçecek Seçimi</div>
+        <div id="drinkListContainer"></div>
+
+        <div class="ptt-box">
+          <button class="btn btn-ptt" id="btnPtt" onclick="basKonusToggle()">
+            🎙️ SESLİ NOT EKLE (BAS-KAYDET)
+          </button>
+          <div class="error-text" id="errPtt"></div>
+          <div class="audio-preview" id="audioPreviewBox">
+            <span>🔊 Sesli not eklendi</span>
+            <button class="btn btn-secondary btn-sm" onclick="sesKaydiniSil()">Sil</button>
+          </div>
+        </div>
+
+        <div class="error-text" id="errOrderSubmit" style="margin-bottom:10px;"></div>
+        <button class="btn btn-primary" id="btnSendOrder" onclick="siparisGonder()">
+          🔔 ZİLE BAS — SİPARİŞİ GÖNDER
+        </button>
+      </div>
+    </section>
+
+    <section class="section" id="screenOcak">
+      <div class="tabs">
+        <button class="tab-btn active" id="tabOrdersBtn" onclick="ocakSekmeDegistir('siparisler')">
+          Siparişler (<span id="activeOrderCount">0</span>)
+        </button>
+        <button class="tab-btn" id="tabShopsBtn" onclick="ocakSekmeDegistir('dukkanlar')">
+          Esnaflar
+        </button>
+        <button class="tab-btn" id="tabProductsBtn" onclick="ocakSekmeDegistir('urunler')">
+          Ürün Menüsü
+        </button>
+      </div>
+
+      <div id="ocakSubOrders">
+        <div id="ocakOrdersList"></div>
+      </div>
+
+      <div id="ocakSubShops" style="display:none;">
+        <div class="card">
+          <div class="card-title">Yeni Esnaf / Dükkan Tanımla</div>
+          <div class="form-group">
+            <label class="form-label" for="newShopName">Dükkan Adı ve Numarası</label>
+            <input type="text" id="newShopName" class="form-input" placeholder="Örn: No: 12 - Saatçi Hasan" />
+            <div class="error-text" id="errNewShopName"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newShopCode">4 Haneli Özel Kod</label>
+            <input type="tel" maxlength="4" id="newShopCode" class="form-input" placeholder="Örn: 2024" />
+            <div class="error-text" id="errNewShopCode"></div>
+          </div>
+          <button class="btn btn-success" onclick="yeniDukkanEkle()">DÜKKANI KAYDET</button>
+        </div>
+
+        <div id="shopsListContainer"></div>
+      </div>
+
+      <div id="ocakSubProducts" style="display:none;">
+        <div class="card">
+          <div class="card-title">Yeni Ürün / İçecek Ekle</div>
+          <div class="form-group">
+            <label class="form-label" for="newProdName">Ürün Adı</label>
+            <input type="text" id="newProdName" class="form-input" placeholder="Örn: Filtre Kahve" />
+            <div class="error-text" id="errNewProdName"></div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" for="newProdIcon">Emoji / İkon</label>
+            <input type="text" id="newProdIcon" class="form-input" value="☕" maxlength="2" placeholder="Örn: ☕" />
+          </div>
+          <button class="btn btn-success" onclick="yeniUrunEkle()">MENÜYE EKLE</button>
+        </div>
+
+        <div id="productsListContainer"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const SUPABASE_URL = "https://eeicyiqphtdrsgnlijkd.supabase.co";
+    const SUPABASE_KEY = "sb_publishable_x6Ejg72sc-ReudIcJSEEyw_gvywq6j0";
+    const OCAK_ADMIN_PIN = "151014";
+
+    let sb = null;
+    let iceceklerListesi = [];
+    let sepet = {};
+    let aktifEsnaf = null;
+    let mediaRecorder = null;
+    let sesParcalari = [];
+    let kaydedilenSesBase64 = null;
+    let kayitYapiliyorMu = false;
+    let kayitZamanlayici = null;
+    let audioCtx = null;
+    let esnafZamanlayici = null;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.warn('Service worker kaydedilemedi:', err);
+        });
+      });
+    }
+
+    function hataGoster(inputId, errId, mesaj) {
+      const inp = inputId ? document.getElementById(inputId) : null;
+      const err = document.getElementById(errId);
+      if (inp) inp.classList.add("input-error");
+      if (err) {
+        err.textContent = mesaj;
+        err.classList.add("visible");
+      }
+    }
+
+    function hataTemizle(inputId, errId) {
+      const inp = inputId ? document.getElementById(inputId) : null;
+      const err = document.getElementById(errId);
+      if (inp) inp.classList.remove("input-error");
+      if (err) {
+        err.textContent = "";
+        err.classList.remove("visible");
+      }
+    }
+
+    function sesKilidiniAc() {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+        const badge = document.getElementById("connBadge");
+        const text = document.getElementById("connText");
+        badge.classList.remove("locked");
+        text.textContent = "🔊 Zil Aktif";
+      } catch (e) {}
+    }
+
+    function diafonZiliCal(tip) {
+      try {
+        if (!audioCtx) {
+          audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+        if (audioCtx.state === "suspended") {
+          audioCtx.resume();
+        }
+
+        if (tip === "yeni_siparis") {
+          document.body.classList.add("alarm-flash");
+          setTimeout(() => document.body.classList.remove("alarm-flash"), 900);
+
+          [0, 0.25, 0.5].forEach((gecikme) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "square";
+            osc.frequency.setValueAtTime(780, audioCtx.currentTime + gecikme);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime + gecikme);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + gecikme + 0.18);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + gecikme);
+            osc.stop(audioCtx.currentTime + gecikme + 0.18);
+          });
+        } else if (tip === "hatirlatma") {
+          // Ayrı ve daha tiz hatırlatma zili (4 hızlı vuruş)
+          document.body.classList.add("hatirlatma-flash");
+          setTimeout(() => document.body.classList.remove("hatirlatma-flash"), 1200);
+
+          [0, 0.12, 0.24, 0.36].forEach((gecikme) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "sawtooth";
+            osc.frequency.setValueAtTime(987.77, audioCtx.currentTime + gecikme);
+            gain.gain.setValueAtTime(0.35, audioCtx.currentTime + gecikme);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + gecikme + 0.09);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + gecikme);
+            osc.stop(audioCtx.currentTime + gecikme + 0.09);
+          });
+        } else if (tip === "yolda") {
+          [523.25, 659.25].forEach((frekans, idx) => {
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = "sine";
+            osc.frequency.setValueAtTime(frekans, audioCtx.currentTime + idx * 0.18);
+            gain.gain.setValueAtTime(0.3, audioCtx.currentTime + idx * 0.18);
+            gain.gain.exponentialRampToValueAtTime(0.01, audioCtx.currentTime + idx * 0.18 + 0.25);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start(audioCtx.currentTime + idx * 0.18);
+            osc.stop(audioCtx.currentTime + idx * 0.18 + 0.25);
+          });
+        }
+      } catch (e) {
+        console.warn("Ses çalınamadı:", e);
+      }
+    }
+
+    async function ekraniUyanikTut() {
+      if ("wakeLock" in navigator) {
+        try {
+          await navigator.wakeLock.request("screen");
+        } catch (e) {}
+      }
+    }
+
+    window.addEventListener("DOMContentLoaded", async () => {
+      sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+      await urunleriYukle();
+
+      document.body.addEventListener("click", sesKilidiniAc, { once: true });
+
+      const urlParams = new URLSearchParams(window.location.search);
+      const qrKod = urlParams.get("kod");
+      if (qrKod) {
+        document.getElementById("inputShopCode").value = qrKod;
+        await esnafGirisYap();
+        window.history.replaceState({}, document.title, window.location.pathname);
+        return;
+      }
+
+      const kayitliRol = localStorage.getItem("demleme_rol");
+      if (kayitliRol === "ocak") {
+        ocakEkraniniBaslat();
+      } else if (kayitliRol === "esnaf") {
+        const kayitliDukkan = localStorage.getItem("demleme_dukkan");
+        if (kayitliDukkan) {
+          aktifEsnaf = JSON.parse(kayitliDukkan);
+          esnafEkraniniBaslat();
+        }
+      }
+    });
+
+    async function urunleriYukle() {
+      const { data } = await sb.from("urunler").select("*").order("id", { ascending: true });
+      iceceklerListesi = data || [];
+      if (aktifEsnaf) {
+        icecekListesiniCiz();
+      }
+    }
+
+    function ekranGoster(ekranId) {
+      document.querySelectorAll(".section").forEach((s) => s.classList.remove("active"));
+      document.getElementById(ekranId).classList.add("active");
+    }
+
+    async function esnafGirisYap() {
+      hataTemizle("inputShopCode", "errShopCode");
+      const kod = document.getElementById("inputShopCode").value.trim();
+
+      if (!/^\d{4}$/.test(kod)) {
+        hataGoster("inputShopCode", "errShopCode", "Lütfen tam 4 rakamdan oluşan dükkan kodunuzu girin.");
+        return;
+      }
+
+      const { data, error } = await sb
+        .from("dukkanlar")
+        .select("*")
+        .eq("kod", kod)
+        .maybeSingle();
+
+      if (error) {
+        hataGoster("inputShopCode", "errShopCode", "Sunucu bağlantı hatası: " + error.message);
+        return;
+      }
+
+      if (!data) {
+        hataGoster("inputShopCode", "errShopCode", "Bu koda ait kayıtlı bir dükkan bulunamadı.");
+        return;
+      }
+
+      aktifEsnaf = data;
+      localStorage.setItem("demleme_rol", "esnaf");
+      localStorage.setItem("demleme_dukkan", JSON.stringify(data));
+      esnafEkraniniBaslat();
+    }
+
+    function ocakGirisYap() {
+      hataTemizle("inputAdminPin", "errAdminPin");
+      const girilenPin = document.getElementById("inputAdminPin").value.trim();
+
+      if (!girilenPin) {
+        hataGoster("inputAdminPin", "errAdminPin", "Yönetici şifresi boş bırakılamaz.");
+        return;
+      }
+
+      if (girilenPin !== OCAK_ADMIN_PIN) {
+        hataGoster("inputAdminPin", "errAdminPin", "Yönetici şifresi hatalı. Tekrar deneyin.");
+        return;
+      }
+
+      localStorage.setItem("demleme_rol", "ocak");
+      sesKilidiniAc();
+      ocakEkraniniBaslat();
+    }
+
+    function cihazKilidiniAc() {
+      if (!confirm("Cihaz eşleştirmesini sıfırlayıp giriş ekranına dönmek istiyor musunuz?")) return;
+      localStorage.removeItem("demleme_rol");
+      localStorage.removeItem("demleme_dukkan");
+      window.location.reload();
+    }
+
+    async function esnafEkraniniBaslat() {
+      await urunleriYukle();
+      ekranGoster("screenEsnaf");
+      document.getElementById("headerTitle").textContent = aktifEsnaf.ad;
+      document.getElementById("headerSub").textContent = "Dükkan Kodu: " + aktifEsnaf.kod;
+      document.getElementById("btnResetRole").style.display = "inline-block";
+
+      icecekListesiniCiz();
+      esnafSonSiparisiGetir();
+
+      if (esnafZamanlayici) clearInterval(esnafZamanlayici);
+      esnafZamanlayici = setInterval(esnafSonSiparisiGetir, 15000);
+
+      sb.channel("esnaf-kanal-" + aktifEsnaf.id)
+        .on(
+          "postgres_changes",
+          { event: "*", schema: "public", table: "siparisler", filter: "dukkan_id=eq." + aktifEsnaf.id },
+          (payload) => {
+            if (payload.new && payload.new.durum === "yolda") {
+              diafonZiliCal("yolda");
+            }
+            esnafSonSiparisiGetir();
+          }
+        )
+        .subscribe();
+    }
+
+    function icecekListesiniCiz() {
+      const container = document.getElementById("drinkListContainer");
+      container.innerHTML = "";
+      sepet = {};
+
+      iceceklerListesi.forEach((item) => {
+        sepet[item.id] = 0;
+        const row = document.createElement("div");
+        row.className = "drink-row";
+        row.innerHTML = `
+          <div class="drink-info">
+            <span class="drink-icon">${item.ikon}</span>
+            <span class="drink-name">${item.ad}</span>
+          </div>
+          <div class="qty-controls">
+            <button class="qty-btn" onclick="adetDegistir(${item.id}, -1)">−</button>
+            <span class="qty-val" id="qty_${item.id}">0</span>
+            <button class="qty-btn plus" onclick="adetDegistir(${item.id}, 1)">+</button>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function adetDegistir(id, fark) {
+      const yeni = Math.max(0, (sepet[id] || 0) + fark);
+      sepet[id] = yeni;
+      document.getElementById("qty_" + id).textContent = yeni;
+      hataTemizle(null, "errOrderSubmit");
+    }
+
+    async function basKonusToggle() {
+      hataTemizle(null, "errPtt");
+      const btn = document.getElementById("btnPtt");
+
+      if (kayitYapiliyorMu) {
+        kaydiDurdur();
+        return;
+      }
+
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        sesParcalari = [];
+        mediaRecorder = new MediaRecorder(stream);
+
+        mediaRecorder.ondataavailable = (e) => {
+          if (e.data.size > 0) sesParcalari.push(e.data);
+        };
+
+        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach((t) => t.stop());
+          const blob = new Blob(sesParcalari, { type: "audio/webm" });
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            kaydedilenSesBase64 = reader.result;
+            document.getElementById("audioPreviewBox").classList.add("visible");
+          };
+          reader.readAsDataURL(blob);
+        };
+
+        mediaRecorder.start();
+        kayitYapiliyorMu = true;
+        btn.classList.add("recording");
+        btn.textContent = "⏹️ KAYIT YAPILIYOR... (BİTİRMEK İÇİN BAS)";
+
+        kayitZamanlayici = setTimeout(() => {
+          if (kayitYapiliyorMu) kaydiDurdur();
+        }, 6000);
+      } catch (err) {
+        hataGoster(null, "errPtt", "Mikrofon izni verilmedi. Tarayıcı ayarlarından mikrofonu açın.");
+      }
+    }
+
+    function kaydiDurdur() {
+      if (mediaRecorder && kayitYapiliyorMu) {
+        mediaRecorder.stop();
+        kayitYapiliyorMu = false;
+        clearTimeout(kayitZamanlayici);
+        const btn = document.getElementById("btnPtt");
+        btn.classList.remove("recording");
+        btn.textContent = "🎙️ SESLİ NOT EKLE (BAS-KAYDET)";
+      }
+    }
+
+    function sesKaydiniSil() {
+      kaydedilenSesBase64 = null;
+      document.getElementById("audioPreviewBox").classList.remove("visible");
+    }
+
+    async function siparisGonder() {
+      hataTemizle(null, "errOrderSubmit");
+      const secilenler = [];
+
+      iceceklerListesi.forEach((item) => {
+        if (sepet[item.id] > 0) {
+          secilenler.push({ id: item.id, ad: item.ad, adet: sepet[item.id] });
+        }
+      });
+
+      if (secilenler.length === 0 && !kaydedilenSesBase64) {
+        hataGoster(null, "errOrderSubmit", "Sipariş göndermek için en az 1 içecek seçin veya sesli not kaydedin.");
+        return;
+      }
+
+      const btn = document.getElementById("btnSendOrder");
+      btn.disabled = true;
+      btn.textContent = "GÖNDERİLİYOR...";
+
+      const { error } = await sb.from("siparisler").insert({
+        dukkan_id: aktifEsnaf.id,
+        dukkan_ad: aktifEsnaf.ad,
+        icerik: secilenler,
+        ses_kaydi: kaydedilenSesBase64,
+        durum: "bekliyor"
+      });
+
+      btn.disabled = false;
+      btn.textContent = "🔔 ZİLE BAS — SİPARİŞİ GÖNDER";
+
+      if (error) {
+        hataGoster(null, "errOrderSubmit", "Sipariş iletilemedi: " + error.message);
+        return;
+      }
+
+      iceceklerListesi.forEach((item) => {
+        sepet[item.id] = 0;
+        const el = document.getElementById("qty_" + item.id);
+        if (el) el.textContent = "0";
+      });
+      sesKaydiniSil();
+      esnafSonSiparisiGetir();
+    }
+
+    async function esnafSonSiparisiGetir() {
+      const { data } = await sb
+        .from("siparisler")
+        .select("*")
+        .eq("dukkan_id", aktifEsnaf.id)
+        .in("durum", ["bekliyor", "yolda", "hatirlatildi"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const box = document.getElementById("esnafActiveOrderBox");
+      if (!data || data.length === 0) {
+        box.style.display = "none";
+        return;
+      }
+
+      const sip = data[0];
+      const kalemMetni = (sip.icerik || []).map((k) => `${k.adet} ${k.ad}`).join(", ") || "Sesli Sipariş";
+      const yoldaMi = sip.durum === "yolda";
+      const gecenSaniye = Math.floor((new Date() - new Date(sip.created_at)) / 1000);
+      const hatirlatabilirMi = !yoldaMi && gecenSaniye >= 120; // 2 dakika sonra hatirlatma butonu aktif olur
+
+      box.style.display = "block";
+      box.innerHTML = `
+        <div class="card order-status-card ${sip.durum}">
+          <div class="card-title">
+            ${
+              yoldaMi
+                ? "🏃‍♂️ SİPARİŞİNİZ YOLDA! (Çaycı Çıktı Geliyor)"
+                : sip.durum === "hatirlatildi"
+                ? "🚨 OCAĞA HATIRLATMA İLETİLDİ (Sıradasınız)"
+                : "⏳ SİPARİŞİNİZ OCAKTA HAZIRLANIYOR..."
+            }
+          </div>
+          <div class="card-desc" style="margin-bottom:8px; font-weight:700; color:#111827;">
+            İçerik: ${kalemMetni}
+          </div>
+          ${
+            !yoldaMi
+              ? hatirlatabilirMi
+                ? `<button class="btn btn-alert btn-sm" style="width:100%; margin-top:6px;" onclick="siparisiHatirlat(${sip.id})">
+                     ⏰ ÇAYLAR NEREDE KALDI? (OCAKÇIYI DÜRT)
+                   </button>`
+                : `<div style="font-size:12px; color:#6B7280; font-weight:600; margin-top:6px;">
+                     ⏳ Çaylar gecikirse 2 dk sonra hatırlatma butonu açılır (${Math.max(0, 120 - gecenSaniye)} sn kaldı).
+                   </div>`
+              : ""
+          }
+        </div>
+      `;
+    }
+
+    async function siparisiHatirlat(siparisId) {
+      const { error } = await sb
+        .from("siparisler")
+        .update({ durum: "hatirlatildi" })
+        .eq("id", siparisId);
+
+      if (!error) {
+        alert("Ocakçıya acil hatırlatma zili gönderildi!");
+        esnafSonSiparisiGetir();
+      }
+    }
+
+    function ocakEkraniniBaslat() {
+      ekranGoster("screenOcak");
+      document.getElementById("headerTitle").textContent = "MERKEZ ÇAY OCAĞI";
+      document.getElementById("headerSub").textContent = "Canlı Diafon Paneli";
+      document.getElementById("btnResetRole").style.display = "inline-block";
+
+      if (!audioCtx || audioCtx.state !== "running") {
+        const badge = document.getElementById("connBadge");
+        const text = document.getElementById("connText");
+        badge.classList.add("locked");
+        text.textContent = "🔇 Zili Aktif Et";
+      }
+
+      ekraniUyanikTut();
+      ocakSiparisleriGetir();
+      dukkanlariListele();
+      urunleriListeleYonetici();
+
+      sb.channel("ocak-ana-kanal")
+        .on("postgres_changes", { event: "*", schema: "public", table: "siparisler" }, (payload) => {
+          if (payload.eventType === "INSERT") {
+            diafonZiliCal("yeni_siparis");
+          } else if (payload.eventType === "UPDATE" && payload.new && payload.new.durum === "hatirlatildi") {
+            diafonZiliCal("hatirlatma");
+          }
+          ocakSiparisleriGetir();
+        })
+        .on("postgres_changes", { event: "*", schema: "public", table: "urunler" }, () => {
+          urunleriYukle();
+          urunleriListeleYonetici();
+        })
+        .subscribe();
+    }
+
+    function ocakSekmeDegistir(sekme) {
+      const isOrders = sekme === "siparisler";
+      const isShops = sekme === "dukkanlar";
+      const isProducts = sekme === "urunler";
+
+      document.getElementById("tabOrdersBtn").classList.toggle("active", isOrders);
+      document.getElementById("tabShopsBtn").classList.toggle("active", isShops);
+      document.getElementById("tabProductsBtn").classList.toggle("active", isProducts);
+
+      document.getElementById("ocakSubOrders").style.display = isOrders ? "block" : "none";
+      document.getElementById("ocakSubShops").style.display = isShops ? "none" : "block";
+      document.getElementById("ocakSubProducts").style.display = isProducts ? "none" : "block";
+    }
+
+    async function ocakSiparisleriGetir() {
+      const { data } = await sb
+        .from("siparisler")
+        .select("*")
+        .in("durum", ["bekliyor", "yolda", "hatirlatildi"])
+        .order("created_at", { ascending: true });
+
+      const liste = document.getElementById("ocakOrdersList");
+      const sayac = document.getElementById("activeOrderCount");
+      const siparisler = data || [];
+      sayac.textContent = siparisler.length;
+
+      if (siparisler.length === 0) {
+        liste.innerHTML = `
+          <div class="card" style="text-align:center; padding:28px;">
+            <div class="card-title">Bekleyen Sipariş Yok</div>
+            <div class="card-desc" style="margin-bottom:0;">Esnaflardan sipariş geldiğinde zil çalar ve burada görünür.</div>
+          </div>
+        `;
+        return;
+      }
+
+      liste.innerHTML = "";
+      siparisler.forEach((sip) => {
+        const saat = new Date(sip.created_at).toLocaleTimeString("tr-TR", { hour: "2-digit", minute: "2-digit" });
+        const kalemler = (sip.icerik || []).map((k) => `${k.adet}x ${k.ad}`).join(" • ") || "Sadece Sesli Not";
+        const yeniMi = sip.durum === "bekliyor";
+        const hatirlatildiMi = sip.durum === "hatirlatildi";
+
+        const div = document.createElement("div");
+        div.className = `ocak-order-card ${hatirlatildiMi ? "hatirlatildi" : yeniMi ? "yeni" : "yolda"}`;
+        div.innerHTML = `
+          ${hatirlatildiMi ? `<div class="hatirlatma-badge">🚨 ACİL / ESNAF ÇAYI HATIRLATTI!</div>` : ""}
+          <div class="ocak-order-header">
+            <div class="ocak-shop-name">${sip.dukkan_ad}</div>
+            <div class="ocak-time">${saat}</div>
+          </div>
+          <div class="ocak-items">${kalemler}</div>
+          ${
+            sip.ses_kaydi
+              ? `<div style="margin-bottom:12px;">
+                   <audio controls src="${sip.ses_kaydi}" style="width:100%; height:36px;"></audio>
+                 </div>`
+              : ""
+          }
+          <div class="ocak-actions">
+            ${
+              yeniMi || hatirlatildiMi
+                ? `<button class="btn btn-success" onclick="siparisDurumGuncelle(${sip.id}, 'yolda')">🏃‍♂️ YOLA ÇIKAR</button>`
+                : `<button class="btn btn-warning" onclick="siparisDurumGuncelle(${sip.id}, 'teslim')">✅ TESLİM EDİLDİ (KAPAT)</button>`
+            }
+            <button class="btn btn-secondary btn-sm" onclick="siparisDurumGuncelle(${sip.id}, 'iptal')">İptal</button>
+          </div>
+        `;
+        liste.appendChild(div);
+      });
+    }
+
+    async function siparisDurumGuncelle(id, yeniDurum) {
+      if (yeniDurum === "teslim" || yeniDurum === "iptal") {
+        await sb.from("siparisler").delete().eq("id", id);
+      } else {
+        await sb.from("siparisler").update({ durum: yeniDurum }).eq("id", id);
+      }
+      ocakSiparisleriGetir();
+    }
+
+    async function yeniDukkanEkle() {
+      hataTemizle("newShopName", "errNewShopName");
+      hataTemizle("newShopCode", "errNewShopCode");
+
+      const ad = document.getElementById("newShopName").value.trim();
+      const kod = document.getElementById("newShopCode").value.trim();
+
+      let hataVar = false;
+      if (ad.length < 3) {
+        hataGoster("newShopName", "errNewShopName", "Dükkan adını ve numarasını eksiksiz yazın.");
+        hataVar = true;
+      }
+      if (!/^\d{4}$/.test(kod)) {
+        hataGoster("newShopCode", "errNewShopCode", "Dükkan kodu tam 4 rakam olmalıdır.");
+        hataVar = true;
+      }
+      if (hataVar) return;
+
+      const { error } = await sb.from("dukkanlar").insert({ ad, kod });
+      if (error) {
+        hataGoster("newShopCode", "errNewShopCode", "Bu 4 haneli kod başka bir dükkanda kullanılıyor.");
+        return;
+      }
+
+      document.getElementById("newShopName").value = "";
+      document.getElementById("newShopCode").value = "";
+      dukkanlariListele();
+    }
+
+    async function dukkanlariListele() {
+      const { data } = await sb.from("dukkanlar").select("*").order("id", { ascending: false });
+      const container = document.getElementById("shopsListContainer");
+      container.innerHTML = "";
+
+      (data || []).forEach((d) => {
+        const girisLinki = `${window.location.origin}${window.location.pathname}?kod=${d.kod}`;
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <div>
+              <div class="card-title" style="margin-bottom:2px;">${d.ad}</div>
+              <div style="font-size:14px; font-weight:800; color:#B91C1C;">Eşleştirme Kodu: ${d.kod}</div>
+            </div>
+            <button class="btn btn-secondary btn-sm" onclick="dukkanSil(${d.id})">Sil</button>
+          </div>
+          <div class="qr-box">
+            <div id="qr_${d.id}"></div>
+            <div style="font-size:11px; color:#4B5563; margin-top:8px; font-weight:700; text-align:center;">
+              Esnaf kamerasıyla bu QR kodu okuttuğunda kod yazmadan doğrudan bağlanır.
+            </div>
+          </div>
+        `;
+        container.appendChild(card);
+
+        new QRCode(document.getElementById("qr_" + d.id), {
+          text: girisLinki,
+          width: 128,
+          height: 128
+        });
+      });
+    }
+
+    async function dukkanSil(id) {
+      if (!confirm("Bu dükkanı silmek istediğinize emin misiniz?")) return;
+      await sb.from("dukkanlar").delete().eq("id", id);
+      dukkanlariListele();
+    }
+
+    async function yeniUrunEkle() {
+      hataTemizle("newProdName", "errNewProdName");
+      const ad = document.getElementById("newProdName").value.trim();
+      const ikon = document.getElementById("newProdIcon").value.trim() || "🫖";
+
+      if (ad.length < 2) {
+        hataGoster("newProdName", "errNewProdName", "Ürün adını eksiksiz girin.");
+        return;
+      }
+
+      const { error } = await sb.from("urunler").insert({ ad, ikon });
+      if (error) {
+        hataGoster("newProdName", "errNewProdName", "Ürün eklenemedi: " + error.message);
+        return;
+      }
+
+      document.getElementById("newProdName").value = "";
+      document.getElementById("newProdIcon").value = "☕";
+      await urunleriYukle();
+      urunleriListeleYonetici();
+    }
+
+    async function urunleriListeleYonetici() {
+      await urunleriYukle();
+      const container = document.getElementById("productsListContainer");
+      container.innerHTML = "";
+
+      iceceklerListesi.forEach((u) => {
+        const card = document.createElement("div");
+        card.className = "card";
+        card.style.display = "flex";
+        card.style.justifyContent = "space-between";
+        card.style.alignItems = "center";
+        card.style.padding = "12px 16px";
+        card.style.marginBottom = "8px";
+        card.innerHTML = `
+          <div style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:22px;">${u.ikon}</span>
+            <span style="font-size:15px; font-weight:800; color:#111827;">${u.ad}</span>
+          </div>
+          <button class="btn btn-secondary btn-sm" onclick="urunSil(${u.id})">Kaldır</button>
+        `;
+        container.appendChild(card);
+      });
+    }
+
+    async function urunSil(id) {
+      if (!confirm("Bu ürünü menüden kaldırmak istediğinize emin misiniz?")) return;
+      await sb.from("urunler").delete().eq("id", id);
+      await urunleriYukle();
+      urunleriListeleYonetici();
+    }
+  </script>
+</body>
+</html>
