@@ -7,7 +7,8 @@
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Demleme" />
-  <link rel="manifest" href='data:application/manifest+json,{"name":"Demleme Çay Diafonu","short_name":"Demleme","start_url":".","display":"standalone","orientation":"portrait","background_color":"#F4F5F7","theme_color":"#B91C1C"}' />
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/svg+xml" href="./icon.svg" />
   <title>Demleme - Çay Ocağı Diafonu</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script>
@@ -43,7 +44,6 @@
       padding-bottom: 32px;
     }
 
-    /* Üst Bar */
     .topbar {
       background-color: #FFFFFF;
       border-bottom: 2px solid #E5E7EB;
@@ -97,7 +97,6 @@
       background-color: currentColor;
     }
 
-    /* Kartlar ve Formlar */
     .section {
       padding: 16px;
       display: none;
@@ -174,7 +173,6 @@
       display: block;
     }
 
-    /* Butonlar */
     .btn {
       width: 100%;
       padding: 14px 16px;
@@ -222,7 +220,6 @@
       font-size: 13px;
     }
 
-    /* İçecek Listesi */
     .drink-row {
       display: flex;
       justify-content: space-between;
@@ -288,7 +285,6 @@
       color: #111827;
     }
 
-    /* Bas Konuş Kutusu */
     .ptt-box {
       margin-top: 12px;
       margin-bottom: 14px;
@@ -324,7 +320,6 @@
       display: flex;
     }
 
-    /* Sipariş Durum Kutusu (Esnaf) */
     .order-status-card {
       border-width: 2px;
     }
@@ -339,7 +334,6 @@
       background-color: #F0FDF4;
     }
 
-    /* Ocak Paneli Sekmeler */
     .tabs {
       display: flex;
       gap: 6px;
@@ -365,7 +359,6 @@
       border-color: #111827;
     }
 
-    /* YOLA ÇIKANA KADAR YANIP SÖNEN ACİL SİPARİŞ KARTI */
     @keyframes siparisFlas {
       0% {
         background-color: #FEF2F2;
@@ -464,7 +457,6 @@
 </head>
 <body>
   <div class="app-container">
-    <!-- ÜST BAR -->
     <header class="topbar">
       <div>
         <div class="topbar-title" id="headerTitle">DEMLEME DİAFON</div>
@@ -479,7 +471,6 @@
       </div>
     </header>
 
-    <!-- 1. EKRAN: ROL KİLİDİ VE GİRİŞ -->
     <section class="section active" id="screenLogin">
       <div class="card">
         <div class="card-title">Esnaf Dükkan Eşleştirme</div>
@@ -504,7 +495,6 @@
       </div>
     </section>
 
-    <!-- 2. EKRAN: ESNAF SİPARİŞ EKRANI -->
     <section class="section" id="screenEsnaf">
       <div id="esnafActiveOrderBox" style="display:none;"></div>
 
@@ -512,7 +502,6 @@
         <div class="card-title">İçecek Seçimi</div>
         <div id="drinkListContainer"></div>
 
-        <!-- Bas Konuş -->
         <div class="ptt-box">
           <button class="btn btn-ptt" id="btnPtt" onclick="basKonusToggle()">
             🎙️ SESLİ NOT EKLE (BAS-KAYDET)
@@ -531,7 +520,6 @@
       </div>
     </section>
 
-    <!-- 3. EKRAN: MERKEZ ÇAY OCAĞI PANELİ -->
     <section class="section" id="screenOcak">
       <div class="tabs">
         <button class="tab-btn active" id="tabOrdersBtn" onclick="ocakSekmeDegistir('siparisler')">
@@ -545,12 +533,10 @@
         </button>
       </div>
 
-      <!-- Canlı Siparişler Alt Sekmesi -->
       <div id="ocakSubOrders">
         <div id="ocakOrdersList"></div>
       </div>
 
-      <!-- Esnaf & Kodlar Alt Sekmesi -->
       <div id="ocakSubShops" style="display:none;">
         <div class="card">
           <div class="card-title">Yeni Esnaf / Dükkan Tanımla</div>
@@ -570,7 +556,6 @@
         <div id="shopsListContainer"></div>
       </div>
 
-      <!-- Ürün Menüsü Yönetimi Alt Sekmesi -->
       <div id="ocakSubProducts" style="display:none;">
         <div class="card">
           <div class="card-title">Yeni Ürün / İçecek Ekle</div>
@@ -606,6 +591,14 @@
     let kayitYapiliyorMu = false;
     let kayitZamanlayici = null;
     let audioCtx = null;
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(err => {
+          console.warn('Service worker kaydedilemedi:', err);
+        });
+      });
+    }
 
     function hataGoster(inputId, errId, mesaj) {
       const inp = inputId ? document.getElementById(inputId) : null;
@@ -1160,7 +1153,6 @@
       dukkanlariListele();
     }
 
-    // ÜRÜN YÖNETİMİ (EKLEME / SİLME)
     async function yeniUrunEkle() {
       hataTemizle("newProdName", "errNewProdName");
       const ad = document.getElementById("newProdName").value.trim();

@@ -1,0 +1,17 @@
+{
+  "name": "Demleme - Çay Ocağı Diafonu",
+  "short_name": "Demleme",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "background_color": "#F4F5F7",
+  "theme_color": "#B91C1C",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "./icon.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
