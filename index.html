@@ -1,3 +1,4 @@
+cat << 'EOF' > index.html
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -339,11 +340,17 @@
       background-color: #FFFBEB;
     }
 
+    .order-status-card.hatirlatildi {
+      border-color: #DC2626;
+      background-color: #FEF2F2;
+    }
+
     .order-status-card.yolda {
       border-color: #15803D;
       background-color: #F0FDF4;
     }
 
+    /* OCAK PANELİ SEKME KONTROLLERİ */
     .tabs {
       display: flex;
       gap: 6px;
@@ -353,7 +360,7 @@
     .tab-btn {
       flex: 1;
       padding: 10px 4px;
-      font-size: 12px;
+      font-size: 13px;
       font-weight: 800;
       background-color: #E5E7EB;
       color: #374151;
@@ -367,6 +374,14 @@
       background-color: #111827;
       color: #FFFFFF;
       border-color: #111827;
+    }
+
+    .ocak-tab-panel {
+      display: none !important;
+    }
+
+    .ocak-tab-panel.active {
+      display: block !important;
     }
 
     @keyframes siparisFlas {
@@ -518,10 +533,11 @@
       </div>
     </header>
 
+    <!-- 1. EKRAN: GİRİŞ -->
     <section class="section active" id="screenLogin">
       <div class="card">
         <div class="card-title">Esnaf Dükkan Eşleştirme</div>
-        <div class="card-desc">Çay ocağından aldığınız 4 haneli dükkan kodunu girin. Telefonunuz bu dükkana kilitlenir, tekrar kod sormaz.</div>
+        <div class="card-desc">Çay ocağından aldığınız 4 haneli dükkan kodunu girin. Telefonunuz bu dükkana kilitlenir.</div>
         <div class="form-group">
           <label class="form-label" for="inputShopCode">4 Haneli Dükkan Kodu</label>
           <input type="tel" maxlength="4" id="inputShopCode" class="form-input" placeholder="Örn: 1453" />
@@ -532,7 +548,7 @@
 
       <div class="card">
         <div class="card-title">Merkez Çay Ocağı Girişi</div>
-        <div class="card-desc">Bu bölüm çay ocağı tezgahındaki ana cihaz içindir. Yönetici şifresini girin.</div>
+        <div class="card-desc">Ocak tezgahındaki yönetici cihazı içindir.</div>
         <div class="form-group">
           <label class="form-label" for="inputAdminPin">Ocak Yönetici Şifresi</label>
           <input type="password" inputmode="numeric" id="inputAdminPin" class="form-input" placeholder="Şifreyi girin" />
@@ -542,6 +558,7 @@
       </div>
     </section>
 
+    <!-- 2. EKRAN: ESNAF SİPARİŞ -->
     <section class="section" id="screenEsnaf">
       <div id="esnafActiveOrderBox" style="display:none;"></div>
 
@@ -567,6 +584,7 @@
       </div>
     </section>
 
+    <!-- 3. EKRAN: MERKEZ OCAK PANELİ -->
     <section class="section" id="screenOcak">
       <div class="tabs">
         <button class="tab-btn active" id="tabOrdersBtn" onclick="ocakSekmeDegistir('siparisler')">
@@ -580,11 +598,13 @@
         </button>
       </div>
 
-      <div id="ocakSubOrders">
+      <!-- PANEL 1: CANLI SİPARİŞLER -->
+      <div class="ocak-tab-panel active" id="panelOrders">
         <div id="ocakOrdersList"></div>
       </div>
 
-      <div id="ocakSubShops" style="display:none;">
+      <!-- PANEL 2: ESNAF LİSTESİ VE DÜKKAN EKLEME -->
+      <div class="ocak-tab-panel" id="panelShops">
         <div class="card">
           <div class="card-title">Yeni Esnaf / Dükkan Tanımla</div>
           <div class="form-group">
@@ -603,7 +623,8 @@
         <div id="shopsListContainer"></div>
       </div>
 
-      <div id="ocakSubProducts" style="display:none;">
+      <!-- PANEL 3: ÜRÜN MENÜSÜ YÖNETİMİ -->
+      <div class="ocak-tab-panel" id="panelProducts">
         <div class="card">
           <div class="card-title">Yeni Ürün / İçecek Ekle</div>
           <div class="form-group">
@@ -709,7 +730,6 @@
             osc.stop(audioCtx.currentTime + gecikme + 0.18);
           });
         } else if (tip === "hatirlatma") {
-          // Ayrı ve daha tiz hatırlatma zili (4 hızlı vuruş)
           document.body.classList.add("hatirlatma-flash");
           setTimeout(() => document.body.classList.remove("hatirlatma-flash"), 1200);
 
@@ -739,9 +759,7 @@
             osc.stop(audioCtx.currentTime + idx * 0.18 + 0.25);
           });
         }
-      } catch (e) {
-        console.warn("Ses çalınamadı:", e);
-      }
+      } catch (e) {}
     }
 
     async function ekraniUyanikTut() {
@@ -1028,7 +1046,7 @@
       const kalemMetni = (sip.icerik || []).map((k) => `${k.adet} ${k.ad}`).join(", ") || "Sesli Sipariş";
       const yoldaMi = sip.durum === "yolda";
       const gecenSaniye = Math.floor((new Date() - new Date(sip.created_at)) / 1000);
-      const hatirlatabilirMi = !yoldaMi && gecenSaniye >= 120; // 2 dakika sonra hatirlatma butonu aktif olur
+      const hatirlatabilirMi = !yoldaMi && gecenSaniye >= 120;
 
       box.style.display = "block";
       box.innerHTML = `
@@ -1038,7 +1056,7 @@
               yoldaMi
                 ? "🏃‍♂️ SİPARİŞİNİZ YOLDA! (Çaycı Çıktı Geliyor)"
                 : sip.durum === "hatirlatildi"
-                ? "🚨 OCAĞA HATIRLATMA İLETİLDİ (Sıradasınız)"
+                ? "🚨 OCAĞA HATIRLATMA İLETİLDİ"
                 : "⏳ SİPARİŞİNİZ OCAKTA HAZIRLANIYOR..."
             }
           </div>
@@ -1049,10 +1067,10 @@
             !yoldaMi
               ? hatirlatabilirMi
                 ? `<button class="btn btn-alert btn-sm" style="width:100%; margin-top:6px;" onclick="siparisiHatirlat(${sip.id})">
-                     ⏰ ÇAYLAR NEREDE KALDI? (OCAKÇIYI DÜRT)
+                     ⏰ ÇAYLAR NEREDE KALDI? (HATIRLAT)
                    </button>`
                 : `<div style="font-size:12px; color:#6B7280; font-weight:600; margin-top:6px;">
-                     ⏳ Çaylar gecikirse 2 dk sonra hatırlatma butonu açılır (${Math.max(0, 120 - gecenSaniye)} sn kaldı).
+                     ⏳ Gecikirse 2 dk sonra hatırlatma butonu açılır (${Math.max(0, 120 - gecenSaniye)} sn kaldı).
                    </div>`
               : ""
           }
@@ -1067,7 +1085,7 @@
         .eq("id", siparisId);
 
       if (!error) {
-        alert("Ocakçıya acil hatırlatma zili gönderildi!");
+        alert("Ocakçıya hatırlatma zili gönderildi.");
         esnafSonSiparisiGetir();
       }
     }
@@ -1086,6 +1104,7 @@
       }
 
       ekraniUyanikTut();
+      ocakSekmeDegistir("siparisler");
       ocakSiparisleriGetir();
       dukkanlariListele();
       urunleriListeleYonetici();
@@ -1106,18 +1125,24 @@
         .subscribe();
     }
 
+    // SEKME DEĞİŞTİRME MEKANİZMASI (BİRBİRİNDEN İZOLE)
     function ocakSekmeDegistir(sekme) {
-      const isOrders = sekme === "siparisler";
-      const isShops = sekme === "dukkanlar";
-      const isProducts = sekme === "urunler";
+      document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
+      document.querySelectorAll(".ocak-tab-panel").forEach((p) => p.classList.remove("active"));
 
-      document.getElementById("tabOrdersBtn").classList.toggle("active", isOrders);
-      document.getElementById("tabShopsBtn").classList.toggle("active", isShops);
-      document.getElementById("tabProductsBtn").classList.toggle("active", isProducts);
-
-      document.getElementById("ocakSubOrders").style.display = isOrders ? "block" : "none";
-      document.getElementById("ocakSubShops").style.display = isShops ? "none" : "block";
-      document.getElementById("ocakSubProducts").style.display = isProducts ? "none" : "block";
+      if (sekme === "siparisler") {
+        document.getElementById("tabOrdersBtn").classList.add("active");
+        document.getElementById("panelOrders").classList.add("active");
+        ocakSiparisleriGetir();
+      } else if (sekme === "dukkanlar") {
+        document.getElementById("tabShopsBtn").classList.add("active");
+        document.getElementById("panelShops").classList.add("active");
+        dukkanlariListele();
+      } else if (sekme === "urunler") {
+        document.getElementById("tabProductsBtn").classList.add("active");
+        document.getElementById("panelProducts").classList.add("active");
+        urunleriListeleYonetici();
+      }
     }
 
     async function ocakSiparisleriGetir() {
@@ -1169,7 +1194,7 @@
             ${
               yeniMi || hatirlatildiMi
                 ? `<button class="btn btn-success" onclick="siparisDurumGuncelle(${sip.id}, 'yolda')">🏃‍♂️ YOLA ÇIKAR</button>`
-                : `<button class="btn btn-warning" onclick="siparisDurumGuncelle(${sip.id}, 'teslim')">✅ TESLİM EDİLDİ (KAPAT)</button>`
+                : `<button class="btn btn-warning" onclick="siparisDurumGuncelle(${sip.id}, 'teslim')">✅ TESLİM EDİLDİ</button>`
             }
             <button class="btn btn-secondary btn-sm" onclick="siparisDurumGuncelle(${sip.id}, 'iptal')">İptal</button>
           </div>
@@ -1236,7 +1261,7 @@
           <div class="qr-box">
             <div id="qr_${d.id}"></div>
             <div style="font-size:11px; color:#4B5563; margin-top:8px; font-weight:700; text-align:center;">
-              Esnaf kamerasıyla bu QR kodu okuttuğunda kod yazmadan doğrudan bağlanır.
+              Esnaf bu QR kodu okutarak bağlanabilir.
             </div>
           </div>
         `;
@@ -1311,3 +1336,4 @@
   </script>
 </body>
 </html>
+EOF
