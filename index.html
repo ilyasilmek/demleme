@@ -226,8 +226,8 @@
 
     .btn-sm {
       width: auto;
-      padding: 8px 12px;
-      font-size: 13px;
+      padding: 7px 11px;
+      font-size: 12px;
     }
 
     .drink-row {
@@ -349,7 +349,6 @@
       background-color: #F0FDF4;
     }
 
-    /* OCAK PANELİ SEKME KONTROLLERİ */
     .tabs {
       display: flex;
       gap: 6px;
@@ -514,6 +513,17 @@
       text-decoration: underline;
       cursor: pointer;
     }
+
+    .edit-mode-box {
+      display: none;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed #D1D5DB;
+    }
+
+    .edit-mode-box.active {
+      display: block;
+    }
   </style>
 </head>
 <body>
@@ -602,7 +612,7 @@
         <div id="ocakOrdersList"></div>
       </div>
 
-      <!-- PANEL 2: ESNAF LİSTESİ VE DÜKKAN EKLEME -->
+      <!-- PANEL 2: ESNAF LİSTESİ VE DÜKKAN EKLEME / DÜZENLEME -->
       <div class="ocak-tab-panel" id="panelShops">
         <div class="card">
           <div class="card-title">Yeni Esnaf / Dükkan Tanımla</div>
@@ -1124,7 +1134,6 @@
         .subscribe();
     }
 
-    // SEKME DEĞİŞTİRME MEKANİZMASI (BİRBİRİNDEN İZOLE)
     function ocakSekmeDegistir(sekme) {
       document.querySelectorAll(".tab-btn").forEach((b) => b.classList.remove("active"));
       document.querySelectorAll(".ocak-tab-panel").forEach((p) => p.classList.remove("active"));
@@ -1240,6 +1249,7 @@
       dukkanlariListele();
     }
 
+    // ESNAF LİSTELEME VE KART İÇİ DÜZENLEME
     async function dukkanlariListele() {
       const { data } = await sb.from("dukkanlar").select("*").order("id", { ascending: false });
       const container = document.getElementById("shopsListContainer");
@@ -1249,14 +1259,36 @@
         const girisLinki = `${window.location.origin}${window.location.pathname}?kod=${d.kod}`;
         const card = document.createElement("div");
         card.className = "card";
+        card.id = `shop_card_${d.id}`;
         card.innerHTML = `
-          <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; justify-content:space-between; align-items:flex-start;">
             <div>
-              <div class="card-title" style="margin-bottom:2px;">${d.ad}</div>
-              <div style="font-size:14px; font-weight:800; color:#B91C1C;">Eşleştirme Kodu: ${d.kod}</div>
+              <div class="card-title" id="shop_name_text_${d.id}" style="margin-bottom:2px;">${d.ad}</div>
+              <div id="shop_code_text_${d.id}" style="font-size:14px; font-weight:800; color:#B91C1C;">Eşleştirme Kodu: ${d.kod}</div>
             </div>
-            <button class="btn btn-secondary btn-sm" onclick="dukkanSil(${d.id})">Sil</button>
+            <div style="display:flex; gap:6px;">
+              <button class="btn btn-secondary btn-sm" onclick="dukkanDuzenleModu(${d.id})">Düzenle</button>
+              <button class="btn btn-secondary btn-sm" onclick="dukkanSil(${d.id})">Sil</button>
+            </div>
           </div>
+
+          <!-- DÜZENLEME PANELİ -->
+          <div class="edit-mode-box" id="shop_edit_box_${d.id}">
+            <div class="form-group" style="margin-bottom:8px;">
+              <label class="form-label" style="font-size:12px;">Dükkan Adı</label>
+              <input type="text" id="edit_name_${d.id}" class="form-input" style="padding:8px 10px; font-size:14px;" value="${d.ad}" />
+            </div>
+            <div class="form-group" style="margin-bottom:8px;">
+              <label class="form-label" style="font-size:12px;">4 Haneli Kod</label>
+              <input type="tel" maxlength="4" id="edit_code_${d.id}" class="form-input" style="padding:8px 10px; font-size:14px;" value="${d.kod}" />
+              <div class="error-text" id="err_edit_${d.id}"></div>
+            </div>
+            <div style="display:flex; gap:6px; margin-top:8px;">
+              <button class="btn btn-success btn-sm" style="flex:1;" onclick="dukkanGuncelle(${d.id})">KAYDET</button>
+              <button class="btn btn-secondary btn-sm" style="flex:1;" onclick="dukkanDuzenleIptal(${d.id})">Vazgeç</button>
+            </div>
+          </div>
+
           <div class="qr-box">
             <div id="qr_${d.id}"></div>
             <div style="font-size:11px; color:#4B5563; margin-top:8px; font-weight:700; text-align:center;">
@@ -1272,6 +1304,45 @@
           height: 128
         });
       });
+    }
+
+    function dukkanDuzenleModu(id) {
+      const box = document.getElementById(`shop_edit_box_${id}`);
+      if (box) box.classList.toggle("active");
+      hataTemizle(`edit_code_${id}`, `err_edit_${id}`);
+    }
+
+    function dukkanDuzenleIptal(id) {
+      const box = document.getElementById(`shop_edit_box_${id}`);
+      if (box) box.classList.remove("active");
+      hataTemizle(`edit_code_${id}`, `err_edit_${id}`);
+    }
+
+    async function dukkanGuncelle(id) {
+      hataTemizle(`edit_code_${id}`, `err_edit_${id}`);
+      const yeniAd = document.getElementById(`edit_name_${id}`).value.trim();
+      const yeniKod = document.getElementById(`edit_code_${id}`).value.trim();
+
+      if (yeniAd.length < 3) {
+        hataGoster(`edit_name_${id}`, `err_edit_${id}`, "Dükkan adını eksiksiz yazın.");
+        return;
+      }
+      if (!/^\d{4}$/.test(yeniKod)) {
+        hataGoster(`edit_code_${id}`, `err_edit_${id}`, "Dükkan kodu tam 4 rakam olmalıdır.");
+        return;
+      }
+
+      const { error } = await sb
+        .from("dukkanlar")
+        .update({ ad: yeniAd, kod: yeniKod })
+        .eq("id", id);
+
+      if (error) {
+        hataGoster(`edit_code_${id}`, `err_edit_${id}`, "Bu kod başka bir dükkanda kullanılıyor.");
+        return;
+      }
+
+      dukkanlariListele();
     }
 
     async function dukkanSil(id) {
